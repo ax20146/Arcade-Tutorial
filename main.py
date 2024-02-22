@@ -41,6 +41,7 @@ class Game(arcade.Window):
         self.engine: arcade.PhysicsEnginePlatformer
 
         self.player: arcade.Sprite
+        self.camera: arcade.Camera
 
         arcade.set_background_color((200, 200, 255))
 
@@ -50,6 +51,8 @@ class Game(arcade.Window):
 
         self.player = Player()
         self.scene.add_sprite("Player", self.player)
+
+        self.camera = arcade.Camera(self.width, self.height)
 
         for row_idx, row in enumerate(reversed(MAP)):
             for col_idx, col in enumerate(row):
@@ -102,10 +105,24 @@ class Game(arcade.Window):
 
     def on_draw(self) -> None:
         self.clear()
+        self.camera.use()
         self.scene.draw()  # type: ignore
 
     def on_update(self, delta_time: float):
         self.engine.update()
+        self.center_camera_to_player()
+
+    def center_camera_to_player(self):
+        screen_center_x = self.player.center_x - (
+            self.camera.viewport_width / 2
+        )
+        screen_center_y = self.player.center_y - (
+            self.camera.viewport_height / 2
+        )
+
+        player_centered = screen_center_x, screen_center_y
+
+        self.camera.move_to(player_centered)
 
 
 def main() -> None:
