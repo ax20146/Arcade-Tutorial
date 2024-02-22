@@ -2,27 +2,25 @@ import arcade
 
 TILE_SIZE = 64
 MAP: list[list[str]] = [
-    [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
-    [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
-    [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
-    [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
-    [" ", " ", " ", "C", "C", " ", " ", "C", "C", "C", " ", " "],
-    [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
-    [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
-    [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
-    [" ", "P", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
-    ["G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G"],
+    [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
+    [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
+    [" ", " ", "C", "C", "C", "C", " ", " ", " ", " ", " ", " ", " ", " "],
+    [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
+    [" ", " ", " ", " ", " ", " ", "C", "C", "C", " ", " ", " ", " ", " "],
+    [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
+    [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
+    [" ", "P", " ", " ", " ", " ", " ", " ", " ", " ", "C", " ", " ", " "],
+    [" ", " ", " ", "C", " ", " ", " ", "C", " ", " ", "C", "", " ", " "],
+    ["G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G"],
 ]
 
 
 class Player(arcade.Sprite):
-    def __init__(self, position: tuple[float, float], scale: float = 0.5):
+    def __init__(self, scale: float = 1):
         super().__init__(
             ":resources:images/animated_characters/robot/robot_idle.png",
             scale,
         )
-
-        self.position = position
 
 
 class Obstacle(arcade.Sprite):
@@ -35,62 +33,79 @@ class Obstacle(arcade.Sprite):
 
 
 class Game(arcade.Window):
-    """
-    Main application class.
-    """
 
     def __init__(self):
         super().__init__(len(MAP[0]) * TILE_SIZE, len(MAP) * TILE_SIZE)  # type: ignore
 
-        self.player_list: arcade.SpriteList
-        self.active_sprite: arcade.SpriteList
-        self.obstacle_spite: arcade.SpriteList
+        self.scene: arcade.Scene
+        self.engine: arcade.PhysicsEnginePlatformer
 
-        arcade.set_background_color((200, 200, 200))
+        self.player: arcade.Sprite
+
+        arcade.set_background_color((200, 200, 255))
 
     def setup(self):
-        self.player_list = arcade.SpriteList()
-        self.active_sprite = arcade.SpriteList()
-        self.obstacle_spite = arcade.SpriteList(use_spatial_hash=True)
+        self.scene = arcade.Scene()
+        self.scene.add_sprite_list("Obstacle", use_spatial_hash=True)
+
+        self.player = Player()
+        self.scene.add_sprite("Player", self.player)
 
         for row_idx, row in enumerate(reversed(MAP)):
             for col_idx, col in enumerate(row):
                 if col == "P":
-                    player = Player(
-                        (col_idx * TILE_SIZE, row_idx * TILE_SIZE // 2)
+                    self.player.position = (
+                        col_idx * TILE_SIZE + TILE_SIZE // 2,
+                        row_idx * TILE_SIZE + TILE_SIZE // 2,
                     )
-
-                    self.player_list.append(player)
-                    self.active_sprite.append(player)
-
                 if col == "G":
-                    obstacle = Obstacle(
-                        ":resources:images/tiles/grassMid.png",
-                        (
-                            col_idx * TILE_SIZE + TILE_SIZE // 2,
-                            row_idx * TILE_SIZE + TILE_SIZE // 2,
+                    self.scene.add_sprite(
+                        "Obstacle",
+                        Obstacle(
+                            ":resources:images/tiles/grassMid.png",
+                            (
+                                col_idx * TILE_SIZE + TILE_SIZE // 2,
+                                row_idx * TILE_SIZE + TILE_SIZE // 2,
+                            ),
                         ),
                     )
-
-                    self.active_sprite.append(obstacle)
-                    self.obstacle_spite.append(obstacle)
 
                 if col == "C":
-                    obstacle = Obstacle(
-                        ":resources:images/tiles/boxCrate_single.png",
-                        (
-                            col_idx * TILE_SIZE + TILE_SIZE // 2,
-                            row_idx * TILE_SIZE + TILE_SIZE // 2,
+                    self.scene.add_sprite(
+                        "Obstacle",
+                        Obstacle(
+                            ":resources:images/tiles/boxCrate_single.png",
+                            (
+                                col_idx * TILE_SIZE + TILE_SIZE // 2,
+                                row_idx * TILE_SIZE + TILE_SIZE // 2,
+                            ),
                         ),
                     )
 
-                    self.active_sprite.append(obstacle)
-                    self.obstacle_spite.append(obstacle)
+        self.engine = arcade.PhysicsEnginePlatformer(
+            self.player, self.scene.get_sprite_list("Obstacle")
+        )
+
+    def on_key_press(self, symbol: int, modifiers: int):
+        if symbol == arcade.key.UP and self.engine.can_jump():
+            self.player.change_y = 10
+        elif symbol == arcade.key.LEFT:
+            self.player.change_x = -5
+        elif symbol == arcade.key.RIGHT:
+            self.player.change_x = 5
+
+    def on_key_release(self, symbol: int, modifiers: int):
+        if symbol == arcade.key.LEFT:
+            self.player.change_x = 0
+        elif symbol == arcade.key.RIGHT:
+            self.player.change_x = 0
 
     def on_draw(self) -> None:
         self.clear()
+        self.scene.draw()  # type: ignore
 
-        self.active_sprite.draw()  # type: ignore
+    def on_update(self, delta_time: float):
+        self.engine.update()
 
 
 def main() -> None:
